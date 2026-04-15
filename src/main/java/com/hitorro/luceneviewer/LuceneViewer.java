@@ -366,7 +366,7 @@ public final class LuceneViewer {
      *
      * @return Lucene sequence number for the delete, or -1 if the docId cannot be resolved in this reader.
      */
-    public static long tryDeleteDocument(IndexWriter indexWriter, DirectoryReader reader, int docId) throws IOException {
+    public static final long tryDeleteDocument(IndexWriter indexWriter, DirectoryReader reader, int docId) throws IOException {
         return indexWriter.tryDeleteDocument(reader, docId);
     }
 
