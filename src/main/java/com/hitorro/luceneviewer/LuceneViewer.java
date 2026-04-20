@@ -362,6 +362,66 @@ public final class LuceneViewer {
     }
 
     /**
+     * List postings (positions, offsets, payloads) for a specific term in a specific field.
+     * Shows exactly how the term is stored in the index at each document position.
+     *
+     * @param reader the IndexReader
+     * @param field  the field name
+     * @param term   the term text to look up
+     * @param limit  max documents to return (capped at 1000)
+     * @return postings page with per-document position details
+     */
+    public static LuceneTermPostingsPage listTermPostings(IndexReader reader,
+                                                           String field,
+                                                           String term,
+                                                           int limit) throws IOException {
+        int effectiveLimit = Math.max(1, Math.min(limit, 1000));
+
+        Terms terms = MultiTerms.getTerms(reader, field);
+        if (terms == null) {
+            return new LuceneTermPostingsPage(field, term, effectiveLimit, 0, List.of(),
+                    "Field not found: " + field);
+        }
+
+        TermsEnum te = terms.iterator();
+        if (!te.seekExact(new BytesRef(term))) {
+            return new LuceneTermPostingsPage(field, term, effectiveLimit, 0, List.of(),
+                    "Term not found in field: " + term);
+        }
+
+        int docFreq = te.docFreq();
+
+        // Request ALL flags: positions, offsets, payloads
+        PostingsEnum postings = te.postings(null, PostingsEnum.ALL);
+        List<LuceneTermPostingsPage.DocPostings> docs = new ArrayList<>(effectiveLimit);
+        int count = 0;
+
+        while (postings.nextDoc() != PostingsEnum.NO_MORE_DOCS && count < effectiveLimit) {
+            int docId = postings.docID();
+            int freq = postings.freq();
+
+            List<LuceneTermPostingsPage.PositionInfo> positions = new ArrayList<>(freq);
+            for (int i = 0; i < freq; i++) {
+                int pos = postings.nextPosition();
+                int startOff = postings.startOffset();
+                int endOff = postings.endOffset();
+                BytesRef payload = postings.getPayload();
+                String payloadStr = null;
+                if (payload != null) {
+                    byte[] copy = Arrays.copyOfRange(payload.bytes, payload.offset, payload.offset + payload.length);
+                    payloadStr = Base64.getEncoder().encodeToString(copy);
+                }
+                positions.add(new LuceneTermPostingsPage.PositionInfo(pos, startOff, endOff, payloadStr));
+            }
+
+            docs.add(new LuceneTermPostingsPage.DocPostings(docId, freq, positions));
+            count++;
+        }
+
+        return new LuceneTermPostingsPage(field, term, effectiveLimit, docFreq, docs, null);
+    }
+
+    /**
      * Lucene internal docId delete (best-effort).
      *
      * @return Lucene sequence number for the delete, or -1 if the docId cannot be resolved in this reader.
