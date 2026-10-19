@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" alt="Hitorro Luceneviewer logo" width="180">
+</p>
+
 # Hitorro Lucene Viewer
 
 A Luke-like Lucene index inspection library for Java 21+. Provides programmatic access to index statistics, field metadata, stored documents, term enumeration, full-text search, and document-level term analysis -- all with cursor-based pagination for safe use on large indexes.
